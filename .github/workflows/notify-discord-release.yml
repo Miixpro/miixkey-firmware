@@ -1,0 +1,59 @@
+name: Notify Discord about releases
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send release notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${DISCORD_WEBHOOK_URL}" ]]; then
+            echo "Missing DISCORD_WEBHOOK_URL repository secret."
+            exit 1
+          fi
+
+          title="${RELEASE_NAME:-${RELEASE_TAG}}"
+          description="${RELEASE_BODY:-No release notes provided.}"
+
+          if (( ${#description} > 3900 )); then
+            description="${description:0:3900}"$'\n\n…'
+          fi
+
+          payload="$(jq -n \
+            --arg title "$title" \
+            --arg url "$RELEASE_URL" \
+            --arg description "$description" \
+            --arg repository "$REPOSITORY" \
+            --arg tag "$RELEASE_TAG" \
+            '{
+              username: "GitHub Releases",
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $description,
+                color: 5763719,
+                footer: { text: ($repository + " • " + $tag) }
+              }]
+            }')"
+
+          curl --fail-with-body --silent --show-error --retry 3 \
+            -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data "$payload"
