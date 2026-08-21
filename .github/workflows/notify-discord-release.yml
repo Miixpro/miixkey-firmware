@@ -4,6 +4,32 @@ on:
   release:
     types: [published]
 
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: "Release title"
+        required: true
+        default: "MiixKey Firmware v1.4.9"
+        type: string
+
+      release_tag:
+        description: "Release tag"
+        required: true
+        default: "v1.4.9"
+        type: string
+
+      release_url:
+        description: "Release URL"
+        required: true
+        default: "https://github.com/Miixpro/miixkey-firmware/releases/tag/v1.4.9"
+        type: string
+
+      release_body:
+        description: "Release notes"
+        required: true
+        default: "This is a manual Discord notification for the MiixKey Firmware v1.4.9 release."
+        type: string
+
 permissions:
   contents: read
 
@@ -15,10 +41,10 @@ jobs:
       - name: Send release notification to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          RELEASE_NAME: ${{ github.event.release.name }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          RELEASE_URL: ${{ github.event.release.html_url }}
-          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_NAME: ${{ github.event.release.name || inputs.release_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+          RELEASE_URL: ${{ github.event.release.html_url || inputs.release_url }}
+          RELEASE_BODY: ${{ github.event.release.body || inputs.release_body }}
           REPOSITORY: ${{ github.repository }}
         shell: bash
         run: |
